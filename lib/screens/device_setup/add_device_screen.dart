@@ -19,7 +19,7 @@ class AddDeviceScreen extends StatefulWidget {
   State<AddDeviceScreen> createState() => _AddDeviceScreenState();
 }
 
-class _AddDeviceScreenState extends State<AddDeviceScreen> with SingleTickerProviderStateMixin {
+class _AddDeviceScreenState extends State<AddDeviceScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _controller;
   int _selectedTab = 0; // 0: Nearby, 1: Manual
   int _selectedCategoryIndex = 0;
@@ -65,12 +65,22 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2), // Speed of one ripple wave
     )..repeat();
 
     _startNearbyScan();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Khi user quay lại app từ Settings, thử scan lại
+    if (state == AppLifecycleState.resumed && !_isScanning) {
+      _startNearbyScan();
+    }
   }
 
   Future<void> _startNearbyScan() async {
@@ -113,6 +123,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> with SingleTickerProv
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     _scanSubscription?.cancel();
     FlutterBluePlus.stopScan();
