@@ -85,13 +85,24 @@ class BluetoothService {
       }
     }
     
-    // 3. iOS - just check Bluetooth permission (handled by system)
+    // 3. iOS - check Bluetooth and Location permissions
     if (Platform.isIOS) {
+      // Bluetooth permission
       final bleStatus = await Permission.bluetooth.status;
       if (!bleStatus.isGranted) {
         final result = await Permission.bluetooth.request();
         if (!result.isGranted) {
           _showPermissionDeniedDialog(context, "Bluetooth");
+          return false;
+        }
+      }
+      
+      // Location permission (required for BLE scan on iOS too)
+      final locationStatus = await Permission.locationWhenInUse.status;
+      if (!locationStatus.isGranted) {
+        final result = await Permission.locationWhenInUse.request();
+        if (!result.isGranted) {
+          _showPermissionDeniedDialog(context, "Vị trí");
           return false;
         }
       }
