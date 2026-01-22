@@ -95,18 +95,31 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> with SingleTickerProv
     });
 
     try {
+      // iOS: Không dùng withKeywords vì iOS cache và filter khác Android
       await FlutterBluePlus.startScan(
         timeout: const Duration(seconds: 15),
-        withKeywords: ["PROV_"], // Chỉ tìm các thiết bị đang ở chế độ provisioning
+        // Bỏ withKeywords để iOS có thể thấy tất cả devices
       );
 
       _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
         if (mounted) {
           setState(() {
-            _nearbyDevices = results.where((r) => 
-               r.device.platformName.isNotEmpty && 
-               r.device.platformName.startsWith("PROV_")
-            ).toList();
+            // Filter sau khi nhận results
+            _nearbyDevices = results.where((r) {
+              final name = r.device.platformName;
+              // Chấp nhận cả device có tên PROV_ hoặc device có advertisementData chứa service UUID
+              return name.isNotEmpty && 
+                     (name.startsWith("PROV_") || 
+                      name.toLowerCase().contains("esp") ||
+                      r.advertisementData.serviceUuids.isNotEmpty);
+            }).toList();
+            
+            // Debug: In ra tất cả devices để check
+            debugPrint("=== Bluetooth Scan Results ===");
+            for (var r in results) {
+              debugPrint("Device: ${r.device.platformName} | ID: ${r.device.remoteId} | RSSI: ${r.rssi}");
+              debugPrint("  Services: ${r.advertisementData.serviceUuids}");
+            }
           });
         }
       });
