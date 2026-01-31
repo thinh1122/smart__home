@@ -42,7 +42,14 @@ class BluetoothService {
       }
     }
     
-    // 2. Check permissions (Android)
+    // 2. iOS - Bluetooth permission tự động được hỏi khi startScan()
+    // KHÔNG dùng permission_handler trên iOS vì không hoạt động đúng trên iOS 26+
+    if (Platform.isIOS) {
+      debugPrint("✅ iOS: Bluetooth is ON. Permission will be requested automatically on first scan");
+      return true; // Trả về true ngay, iOS tự xử lý permission
+    }
+    
+    // 3. Check permissions (Android only)
     if (Platform.isAndroid) {
       // Bluetooth Scan permission
       final bleScanStatus = await Permission.bluetoothScan.status;
@@ -82,29 +89,6 @@ class BluetoothService {
           await openAppSettings();
         }
         return false;
-      }
-    }
-    
-    // 3. iOS - check Bluetooth and Location permissions
-    if (Platform.isIOS) {
-      // Bluetooth permission
-      final bleStatus = await Permission.bluetooth.status;
-      if (!bleStatus.isGranted) {
-        final result = await Permission.bluetooth.request();
-        if (!result.isGranted) {
-          _showPermissionDeniedDialog(context, "Bluetooth");
-          return false;
-        }
-      }
-      
-      // Location permission (required for BLE scan on iOS too)
-      final locationStatus = await Permission.locationWhenInUse.status;
-      if (!locationStatus.isGranted) {
-        final result = await Permission.locationWhenInUse.request();
-        if (!result.isGranted) {
-          _showPermissionDeniedDialog(context, "Vị trí");
-          return false;
-        }
       }
     }
     
