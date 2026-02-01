@@ -6,9 +6,6 @@ class AppConfig {
     return "https://backend-led-xaxn.onrender.com/api";
     
     // Local Docker Backend (uncomment nếu muốn dùng local)
-    // Nếu test trên điện thoại thật: dùng IP máy tính (192.168.1.28)
-    // Nếu test trên Android Emulator: dùng 10.0.2.2
-    // Nếu test trên iOS Simulator: dùng localhost
     // return "http://192.168.1.28:8080/api";
   }
   static String get mqttBroker {
