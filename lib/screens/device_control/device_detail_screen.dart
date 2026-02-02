@@ -34,7 +34,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   void _setupMqttListener() {
     _mqttService.connect();
     // Lắng nghe trạng thái thiết bị
-    _mqttService.subscribeToTopic('smarthome/devices/${widget.device['hardwareId']}/state');
+    _mqttService.subscribe('smarthome/devices/${widget.device['hardwareId']}/state');
   }
 
   Future<void> _loadDeviceState() async {
@@ -67,7 +67,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     setState(() => _isOn = newState);
     
     // Gửi lệnh qua MQTT
-    _mqttService.publishMessage(
+    _mqttService.publish(
       'smarthome/devices/${widget.device['hardwareId']}/set',
       newState ? 'ON' : 'OFF',
     );
