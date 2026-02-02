@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iot_project/theme.dart';
 import 'package:iot_project/services/api_service.dart';
 import 'package:iot_project/services/mqtt_service.dart';
+import 'package:mqtt_client/mqtt_client.dart';
+import 'dart:async';
 
 class DeviceDetailScreen extends StatefulWidget {
   final Map<String, dynamic> device;
@@ -17,6 +19,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   late TabController _tabController;
   final ApiService _apiService = ApiService();
   final MqttService _mqttService = MqttService();
+  StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _mqttSubscription;
   
   bool _isOn = false;
   List<Map<String, dynamic>> _schedules = [];
@@ -31,10 +34,39 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     _setupMqttListener();
   }
 
-  void _setupMqttListener() {
-    _mqttService.connect();
-    // Lắng nghe trạng thái thiết bị
-    _mqttService.subscribe('smarthome/devices/${widget.device['hardwareId']}/state');
+  void _setupMqttListener() async {
+    // Kết nối MQTT
+    final connected = await _mqttService.connect();
+    if (!connected) {
+      debugPrint("DeviceDetail: ❌ MQTT connection failed");
+      return;
+    }
+    
+    // Subscribe topic state của thiết bị này
+    final hwId = widget.device['hardwareId'];
+    _mqttService.subscribe('smarthome/devices/$hwId/state');
+    
+    // Listen MQTT messages và cập nhật UI
+    _mqttSubscription = _mqttService.messagesStream?.listen((List<MqttReceivedMessage<MqttMessage>> c) {
+      if (c.isEmpty) return;
+      
+      final MqttPublishMessage recMess = c[0].payload as MqttPublishMessage;
+      final String payload = MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+      final String topic = c[0].topic;
+      
+      debugPrint('📩 DeviceDetail MQTT: Topic=$topic, Payload=$payload');
+      
+      // Chỉ cập nhật nếu topic khớp với thiết bị này
+      if (topic.contains(hwId)) {
+        final bool newState = (payload == 'ON');
+        if (mounted && _isOn != newState) {
+          setState(() {
+            _isOn = newState;
+          });
+          debugPrint('🔄 DeviceDetail: UI updated to $newState');
+        }
+      }
+    });
   }
 
   Future<void> _loadDeviceState() async {
@@ -47,7 +79,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   Future<void> _loadSchedules() async {
     setState(() => _isLoading = true);
     try {
-      final schedules = await _apiService.getSchedulesByDevice(widget.device['id']);
+      // FIX: Convert device['id'] properly
+      final dynamic deviceIdRaw = widget.device['id'];
+      final deviceId = deviceIdRaw is int ? deviceIdRaw : int.parse(deviceIdRaw.toString());
+      
+      final schedules = await _apiService.getSchedulesByDevice(deviceId);
       setState(() {
         _schedules = schedules;
         _isLoading = false;
@@ -75,6 +111,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
   @override
   void dispose() {
+    _mqttSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -488,8 +525,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   Future<void> _createSchedule(TimeOfDay time, String action, String name) async {
     try {
       final timeString = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      
+      // FIX: Convert device['id'] to int properly
+      final dynamic deviceIdRaw = widget.device['id'];
+      final int deviceId = deviceIdRaw is int ? deviceIdRaw : int.parse(deviceIdRaw.toString());
+      
       await _apiService.createSchedule(
-        deviceId: widget.device['id'],
+        deviceId: deviceId,
         time: timeString,
         action: action,
         name: name,
