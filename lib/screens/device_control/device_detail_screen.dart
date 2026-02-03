@@ -81,7 +81,21 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     try {
       // FIX: Convert device['id'] properly
       final dynamic deviceIdRaw = widget.device['id'];
-      final deviceId = deviceIdRaw is int ? deviceIdRaw : int.parse(deviceIdRaw.toString());
+      
+      // Handle both int and String (UUID)
+      dynamic deviceId;
+      if (deviceIdRaw is int) {
+        deviceId = deviceIdRaw;
+      } else if (deviceIdRaw is String) {
+        // Try parse as int, if fail use as string (UUID)
+        try {
+          deviceId = int.parse(deviceIdRaw);
+        } catch (e) {
+          deviceId = deviceIdRaw; // Keep as UUID string
+        }
+      } else {
+        deviceId = deviceIdRaw;
+      }
       
       final schedules = await _apiService.getSchedulesByDevice(deviceId);
       setState(() {
@@ -526,9 +540,22 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     try {
       final timeString = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
       
-      // FIX: Convert device['id'] to int properly
+      // FIX: Convert device['id'] to int properly, handle UUID case
       final dynamic deviceIdRaw = widget.device['id'];
-      final int deviceId = deviceIdRaw is int ? deviceIdRaw : int.parse(deviceIdRaw.toString());
+      
+      dynamic deviceId;
+      if (deviceIdRaw is int) {
+        deviceId = deviceIdRaw;
+      } else if (deviceIdRaw is String) {
+        // Try parse as int, if fail use as string (UUID)
+        try {
+          deviceId = int.parse(deviceIdRaw);
+        } catch (e) {
+          deviceId = deviceIdRaw; // Keep as UUID string
+        }
+      } else {
+        deviceId = deviceIdRaw;
+      }
       
       await _apiService.createSchedule(
         deviceId: deviceId,
