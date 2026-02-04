@@ -563,8 +563,6 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     } catch (_) {
       selectedTime = TimeOfDay.now();
     }
-    // Nếu parse không ra thì dùng giờ hiện tại
-    selectedTime = selectedTime ?? TimeOfDay.now();
 
     String selectedAction = schedule['action'] ?? 'ON';
     String scheduleName = schedule['name'] ?? '';
