@@ -1028,15 +1028,6 @@ class _BleProvisioningScreenState extends State<BleProvisioningScreen> {
       ],
     );
   }
-            child: Text(
-              "HOÀN TẤT CÀI ĐẶT",
-              style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 enum BleStatus {
