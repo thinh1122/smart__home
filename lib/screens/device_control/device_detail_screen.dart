@@ -466,7 +466,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   }
 
   Future<void> _showAddScheduleDialog() async {
-    TimeOfDay? selectedTime = TimeOfDay.now();
+    TimeOfDay selectedTime = TimeOfDay.now();
     String selectedAction = 'ON';
     String scheduleName = '';
 
@@ -492,11 +492,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
               // Chọn giờ
               ListTile(
                 leading: const Icon(Icons.access_time),
-                title: Text('Giờ: ${selectedTime?.format(context)}'),
+                title: Text('Giờ: ${selectedTime.format(context)}'),
                 onTap: () async {
                   final time = await showTimePicker(
                     context: context,
-                    initialTime: selectedTime!,
+                    initialTime: selectedTime,
                   );
                   if (time != null) {
                     setDialogState(() => selectedTime = time);
@@ -531,9 +531,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             ElevatedButton(
               onPressed: () async {
                 if (scheduleName.isEmpty) {
-                  scheduleName = '${selectedAction == 'ON' ? 'Bật' : 'Tắt'} lúc ${selectedTime?.format(context)}';
+                  scheduleName = '${selectedAction == 'ON' ? 'Bật' : 'Tắt'} lúc ${selectedTime.format(context)}';
                 }
-                await _createSchedule(selectedTime!, selectedAction, scheduleName);
+                await _createSchedule(selectedTime, selectedAction, scheduleName);
                 if (mounted) Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -550,7 +550,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
   Future<void> _showEditScheduleDialog(Map<String, dynamic> schedule) async {
     // Parse time "HH:mm" từ backend
-    TimeOfDay? selectedTime;
+    TimeOfDay selectedTime;
     final String rawTime = schedule['time'] ?? '00:00';
     try {
       final parts = rawTime.split(':');
@@ -563,7 +563,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     } catch (_) {
       selectedTime = TimeOfDay.now();
     }
-    selectedTime ??= TimeOfDay.now();
+    // Nếu parse không ra thì dùng giờ hiện tại
+    selectedTime = selectedTime ?? TimeOfDay.now();
 
     String selectedAction = schedule['action'] ?? 'ON';
     String scheduleName = schedule['name'] ?? '';
@@ -595,7 +596,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                 onTap: () async {
                   final time = await showTimePicker(
                     context: context,
-                    initialTime: selectedTime!,
+                    initialTime: selectedTime,
                   );
                   if (time != null) {
                     setDialogState(() => selectedTime = time);
@@ -634,7 +635,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                 }
                 await _updateSchedule(
                   schedule['id'] as int,
-                  selectedTime!,
+                  selectedTime,
                   selectedAction,
                   scheduleName,
                 );
