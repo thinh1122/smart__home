@@ -550,8 +550,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
   Future<void> _showEditScheduleDialog(Map<String, dynamic> schedule) async {
     // Parse time "HH:mm" từ backend
-    TimeOfDay selectedTime;
     final String rawTime = schedule['time'] ?? '00:00';
+    TimeOfDay selectedTime = TimeOfDay.now(); // Default value
+    
     try {
       final parts = rawTime.split(':');
       if (parts.length >= 2) {
