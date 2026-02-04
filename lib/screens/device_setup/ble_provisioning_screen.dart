@@ -911,32 +911,36 @@ class _BleProvisioningScreenState extends State<BleProvisioningScreen> {
               final room = _rooms[index];
               final isSelected = _selectedRoomId == room['id'];
               
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    debugPrint("🔘 Room tapped: ${room['name']} (ID: ${room['id']})");
-                    setState(() => _selectedRoomId = room['id']);
+              return Container(
+                margin: const EdgeInsets.all(2), // Add margin for better touch area
+                child: ElevatedButton(
+                  onPressed: () {
+                    debugPrint("🔘 Room button pressed: ${room['name']} (ID: ${room['id']})");
+                    setState(() {
+                      _selectedRoomId = room['id'];
+                      debugPrint("🔘 Selected room ID updated to: $_selectedRoomId");
+                    });
                   },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primaryColor : Colors.white,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSelected ? AppTheme.primaryColor : Colors.white,
+                    foregroundColor: isSelected ? Colors.white : Colors.black87,
+                    elevation: isSelected ? 4 : 1,
+                    shadowColor: isSelected ? AppTheme.primaryColor.withOpacity(0.3) : Colors.grey.withOpacity(0.2),
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
+                      side: BorderSide(
                         color: isSelected ? AppTheme.primaryColor : Colors.grey[300]!,
+                        width: isSelected ? 2 : 1,
                       ),
-                      boxShadow: isSelected ? [
-                        BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))
-                      ] : [],
                     ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      room['name'],
-                      style: GoogleFonts.outfit(
-                        color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  child: Text(
+                    room['name'],
+                    style: GoogleFonts.outfit(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
                 ),
