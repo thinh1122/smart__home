@@ -949,13 +949,32 @@ class _BleProvisioningScreenState extends State<BleProvisioningScreen> {
           ),
         ),
         const SizedBox(height: 24),
+        
+        // Debug info
+        if (_selectedRoomId != null)
+          Container(
+            padding: const EdgeInsets.all(8),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              "✅ Đã chọn phòng: ${_rooms.firstWhere((r) => r['id'] == _selectedRoomId, orElse: () => {'name': 'Unknown'})['name']}",
+              style: GoogleFonts.outfit(color: Colors.green, fontWeight: FontWeight.w600),
+            ),
+          ),
+        
         SizedBox(
           width: double.infinity,
           height: 55,
           child: ElevatedButton(
-            onPressed: _selectedRoomId == null ? null : _addDeviceToServer,
+            onPressed: _selectedRoomId == null ? null : () {
+              debugPrint("🚀 HOÀN TẤT button pressed with roomId: $_selectedRoomId");
+              _addDeviceToServer();
+            },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
+              backgroundColor: _selectedRoomId == null ? Colors.grey : AppTheme.primaryColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
             ),
             child: Text(
