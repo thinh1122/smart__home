@@ -69,5 +69,11 @@
 	<!-- Camera Permission for QR Code Scanner -->
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access to scan QR codes for device setup</string>
+	
+	<!-- Speech Recognition & Microphone for Voice Control -->
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Ứng dụng cần quyền nhận diện giọng nói để bạn có thể điều khiển thiết bị bằng giọng nói.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập Microphone để nhận lệnh điều khiển bằng giọng nói.</string>
 </dict>
 </plist>

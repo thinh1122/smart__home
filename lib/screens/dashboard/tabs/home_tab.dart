@@ -303,41 +303,63 @@ class HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
 
   // --- VOICE CONTROL LOGIC ---
 
-  Future<void> _checkPermission() async {
-    var status = await Permission.microphone.status;
-    if (status.isDenied) {
-      await Permission.microphone.request();
+  Future<bool> _checkPermission() async {
+    try {
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.microphone,
+        Permission.speech, // Required for some devices/OS versions
+      ].request();
+      
+      return statuses[Permission.microphone]!.isGranted && 
+             statuses[Permission.speech]!.isGranted;
+    } catch (e) {
+      debugPrint("❌ Permission Request Error: $e");
+      return false;
     }
   }
 
   void _listen() async {
-    if (!_isListening) {
-      await _checkPermission();
-      bool available = await _speech.initialize(
-        onStatus: (val) => debugPrint('onStatus: $val'),
-        onError: (val) => debugPrint('onError: $val'),
-      );
-      if (available) {
-        setState(() => _isListening = true);
-        _speech.listen(
-          onResult: (val) => setState(() {
-            _lastWords = val.recognizedWords;
-            if (val.hasConfidenceRating && val.confidence > 0) {
-                // Real-time feedback
-            }
-            if (val.finalResult) {
-                _processVoiceCommand(_lastWords);
-                // Stop listening after final result
-                _isListening = false;
-                _speech.stop();
-            }
-          }),
-          localeId: 'vi_VN', // Set Vietnames locale
+    try {
+      if (!_isListening) {
+        bool hasPermission = await _checkPermission();
+        if (!hasPermission) {
+          _showToast(context, "Thiếu quyền Microphone hoặc Nhận diện giọng nói");
+          return;
+        }
+
+        bool available = await _speech.initialize(
+          onStatus: (val) => debugPrint('onStatus: $val'),
+          onError: (val) {
+            debugPrint('onError: $val');
+            setState(() => _isListening = false);
+          },
         );
+
+        if (available) {
+          setState(() => _isListening = true);
+          _speech.listen(
+            onResult: (val) => setState(() {
+              _lastWords = val.recognizedWords;
+              if (val.finalResult) {
+                  _processVoiceCommand(_lastWords);
+                  _isListening = false;
+                  _speech.stop();
+              }
+            }),
+            localeId: 'vi_VN',
+            listenMode: stt.ListenMode.confirmation, // Better for commands
+          );
+        } else {
+          _showToast(context, "Dịch vụ giọng nói không khả dụng trên thiết bị này");
+        }
+      } else {
+        setState(() => _isListening = false);
+        _speech.stop();
       }
-    } else {
+    } catch (e) {
+      debugPrint("❌ Voice Control Error: $e");
       setState(() => _isListening = false);
-      _speech.stop();
+      _showToast(context, "Lỗi khi mở Mic: $e");
     }
   }
 
