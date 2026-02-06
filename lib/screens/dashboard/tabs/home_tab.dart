@@ -411,6 +411,7 @@ class HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
     return Scaffold( // Wrap in Scaffold to use FloatingActionButton
       backgroundColor: Colors.white,
       floatingActionButton: FloatingActionButton(
+        heroTag: 'voice_mic_fab', // Unique Tag
         onPressed: _listen,
         backgroundColor: _isListening ? Colors.redAccent : const Color(0xFF2972FF),
         child: Icon(_isListening ? Icons.mic : Icons.mic_none, color: Colors.white),

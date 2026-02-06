@@ -92,23 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // FAB Layout (Only show on Home Tab)
         if (_selectedIndex == 0) ...[
           
-          // 0. Mic Button (Restore)
-          Positioned(
-            bottom: 99,
-            right: 100,
-            child: SizedBox(
-              width: 56,
-              height: 56,
-              child: FloatingActionButton(
-                heroTag: 'mic',
-                backgroundColor: const Color(0xFFE0E6FF),
-                elevation: 0,
-                onPressed: () {},
-                shape: const CircleBorder(),
-                child: const Icon(CupertinoIcons.mic, color: AppTheme.primaryColor, size: 28),
-              ),
-            ),
-          ),
+
 
 
           // 1. Overlay
