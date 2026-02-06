@@ -7,6 +7,8 @@ import 'package:iot_project/services/api_service.dart';
 import 'package:iot_project/services/device_service.dart';
 import 'package:iot_project/services/mqtt_service.dart';
 import 'package:mqtt_client/mqtt_client.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 
 class HomeTab extends StatefulWidget {
@@ -21,6 +23,11 @@ class HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
   final MqttService _mqttService = MqttService();
   StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _mqttSubscription;
   
+  // Speech to Text
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  String _lastWords = '';
+
   String _selectedRoom = 'Tất cả phòng';
   String _homeName = 'Nhà của tôi';
   List<String> _rooms = ['Tất cả phòng', 'Phòng khách', 'Phòng ngủ', 'Phòng bếp'];
@@ -31,6 +38,7 @@ class HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _speech = stt.SpeechToText();
     _initMqttAndLoad();
   }
 
@@ -293,50 +301,174 @@ class HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
     if (mounted) setState(() {});
   }
 
+  // --- VOICE CONTROL LOGIC ---
+
+  Future<void> _checkPermission() async {
+    var status = await Permission.microphone.status;
+    if (status.isDenied) {
+      await Permission.microphone.request();
+    }
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      await _checkPermission();
+      bool available = await _speech.initialize(
+        onStatus: (val) => debugPrint('onStatus: $val'),
+        onError: (val) => debugPrint('onError: $val'),
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) => setState(() {
+            _lastWords = val.recognizedWords;
+            if (val.hasConfidenceRating && val.confidence > 0) {
+                // Real-time feedback
+            }
+            if (val.finalResult) {
+                _processVoiceCommand(_lastWords);
+                // Stop listening after final result
+                _isListening = false;
+                _speech.stop();
+            }
+          }),
+          localeId: 'vi_VN', // Set Vietnames locale
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
+  void _processVoiceCommand(String command) {
+    debugPrint("🎤 Voice Command: $command");
+    
+    command = command.toLowerCase();
+    
+    // 1. Phân tích lệnh "Bật" hoặc "Tắt"
+    bool? isTurnOn;
+    if (command.contains('bật') || command.contains('mở')) {
+      isTurnOn = true;
+    } else if (command.contains('tắt') || command.contains('đóng')) {
+      isTurnOn = false;
+    }
+
+    if (isTurnOn == null) {
+      _showToast(context, "Không hiểu lệnh: '$command'. Hãy nói 'Bật' hoặc 'Tắt'");
+      return;
+    }
+
+    // 2. Tìm thiết bị phù hợp trong lệnh
+    // VD: "Bật đèn phòng khách" -> tìm "đèn phòng khách" trong danh sách device.name
+    Map<String, dynamic>? targetDevice;
+    
+    // Thử tìm match chính xác hoặc gần đúng nhất
+    for (var device in _devices) {
+      String deviceName = device['name'].toString().toLowerCase();
+      
+      // Nếu tên thiết bị xuất hiện trong lệnh nói
+      if (command.contains(deviceName)) {
+          targetDevice = device;
+          break; // Tìm thấy thiết bị, break luôn (ưu tiên tên dài/chính xác hơn)
+      }
+      
+      // Fallback: Nếu lệnh chứa 1 phần tên (vd: "đèn" -> bật "đèn phòng khách")
+      // Logic này có thể mở rộng sau. Hiện tại ưu tiên match tên.
+    }
+    
+    // Nếu tìm thấy thiết bị -> Thực thi
+    if (targetDevice != null) {
+      String action = isTurnOn ? "Bật" : "Tắt";
+      String dName = targetDevice['name'];
+      _showToast(context, "Đang $action $dName...");
+      _toggleDevice(targetDevice, isTurnOn);
+    } else {
+      // Trường hợp không tìm thấy, thử "tất cả" ? 
+      // Hoặc fallback kiểm tra từ khóa
+      if (command.contains('đèn')) {
+         // Thử tìm thiết bị đầu tiên có chữ đèn? Or bật hết đèn?
+         // Để an toàn, chỉ báo lỗi.
+         _showToast(context, "Không tìm thấy thiết bị nào trong lệnh: '$command'");
+      } else {
+         _showToast(context, "Không tìm thấy thiết bị.");
+      }
+    }
+  }
+
+  void _showToast(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: refresh,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildWeatherCard(),
-            ),
-            const SizedBox(height: 24),
-            _buildCategoryCards(),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible( // Wrap Text with Flexible to prevent overflow
-                    child: Text(
-                      'Tất cả thiết bị',
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22,
-                        color: Colors.black,
+    return Scaffold( // Wrap in Scaffold to use FloatingActionButton
+      backgroundColor: Colors.white,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _listen,
+        backgroundColor: _isListening ? Colors.redAccent : const Color(0xFF2972FF),
+        child: Icon(_isListening ? Icons.mic : Icons.mic_none, color: Colors.white),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      body: RefreshIndicator(
+        onRefresh: refresh,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildWeatherCard(),
+              ),
+              const SizedBox(height: 24),
+              _buildCategoryCards(),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible( // Wrap Text with Flexible to prevent overflow
+                      child: Text(
+                        'Tất cả thiết bị',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                          color: Colors.black,
+                        ),
+                        overflow: TextOverflow.ellipsis, // Add overflow handling
                       ),
-                      overflow: TextOverflow.ellipsis, // Add overflow handling
+                    ),
+                    const Icon(Icons.more_vert, color: Colors.black54),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildRoomFilters(),
+              const SizedBox(height: 16),
+              _buildDeviceGrid(),
+              const SizedBox(height: 80), // Space for FAB
+              if (_isListening) 
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      _lastWords.isEmpty ? "Đang nghe..." : _lastWords, 
+                      style: GoogleFonts.outfit(color: Colors.redAccent, fontWeight: FontWeight.bold)
                     ),
                   ),
-                  const Icon(Icons.more_vert, color: Colors.black54),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildRoomFilters(),
-            const SizedBox(height: 16),
-            _buildDeviceGrid(),
-            const SizedBox(height: 100), // Space for FAB
-          ],
+                )
+            ],
+          ),
         ),
       ),
     );

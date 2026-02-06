@@ -43,6 +43,7 @@ dependencies:
   permission_handler: ^11.1.0
   flutter_blue_plus: ^1.35.5
   wifi_scan: ^0.4.1
+  speech_to_text: ^7.3.0
 
 dev_dependencies:
   flutter_test:
