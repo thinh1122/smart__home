@@ -378,17 +378,29 @@ class _BleProvisioningScreenState extends State<BleProvisioningScreen> {
     setState(() => _isLoadingRooms = true);
     try {
       debugPrint("🏠 Fetching rooms from API...");
-      final rooms = await ApiService().getMyRooms();
+      List<Map<String, dynamic>> rooms = await ApiService().getMyRooms();
+      
+      // AUTO-CREATE: Nếu chưa có nhà/phòng nào, tự tạo 1 cái mặc định
+      if (rooms.isEmpty) {
+        debugPrint("🏠 No rooms found. Creating a default house...");
+        try {
+          await ApiService().createHouse("Nhà của tôi", "Việt Nam", ["Phòng khách", "Phòng ngủ", "Bếp"]);
+          rooms = await ApiService().getMyRooms(); // Tải lại sau khi tạo
+        } catch (e) {
+          debugPrint("❌ Failed to create default house: $e");
+          // Tiếp tục dùng fallback nếu tạo thất bại
+        }
+      }
+
       debugPrint("🏠 API returned ${rooms.length} rooms");
       
       if (mounted) {
         setState(() {
           _rooms = rooms;
           _isLoadingRooms = false;
-          // Auto-select first room if available
           if (rooms.isNotEmpty && _selectedRoomId == null) {
-            _selectedRoomId = rooms.first['id'];
-            debugPrint("🏠 Auto-selected first room: ${rooms.first['name']}");
+            _selectedRoomId = rooms.first['id']?.toString();
+            debugPrint("🏠 Selected room ID: $_selectedRoomId");
           }
         });
       }
@@ -396,27 +408,22 @@ class _BleProvisioningScreenState extends State<BleProvisioningScreen> {
       debugPrint("❌ Lỗi tải phòng: $e");
       
       if (mounted) {
-        // Show error message to user
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Không thể tải danh sách phòng. Sử dụng phòng mặc định."),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
+            content: Text("Lỗi hệ thống khi tải phòng: $e"),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 4),
           ),
         );
         
-        // Fallback to test rooms
+        // Fallback to dummy rooms (might fail on server but keeps UI working)
         setState(() {
           _rooms = [
             {'id': '1', 'name': 'Phòng khách'},
             {'id': '2', 'name': 'Phòng ngủ'},
-            {'id': '3', 'name': 'Sân sau'},
-            {'id': '4', 'name': 'Nhà bếp'},
           ];
           _isLoadingRooms = false;
-          // Auto-select first room
           _selectedRoomId = '1';
-          debugPrint("🏠 Using fallback rooms, auto-selected: Phòng khách");
         });
       }
     }
