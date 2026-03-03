@@ -652,10 +652,14 @@ class HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
   }
 
   Widget _buildDeviceGrid() {
-    // Lọc thiết bị theo phòng đang chọn
+    // Lọc thiết bị theo phòng đang chọn (Bản sửa lỗi: Kiểm tra cả room object)
     final filteredDevices = _selectedRoom == 'Tất cả phòng'
         ? _devices
-        : _devices.where((d) => d['roomName'] == _selectedRoom).toList();
+        : _devices.where((d) {
+            final roomName = d['roomName']?.toString() ?? 
+                             (d['room'] is Map ? d['room']['name']?.toString() : null);
+            return roomName == _selectedRoom;
+          }).toList();
 
     if (filteredDevices.isEmpty) {
       return Center(
